@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Student Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000; /* Black background */
+            color: #fff; /* White text */
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #3498db; /* Light blue for the title */
+        }
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            background-color: #333; /* Dark gray for the input */
+            color: #fff; /* White text */
+        }
+        #charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .chart-container {
+            background: #1e1e1e; /* Dark gray for chart containers */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1); /* White shadow */
+        }
+        #leaderboard {
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e1e; /* Dark gray for leaderboard */
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1); /* White shadow */
+            max-width: 800px;
+        }
+        #leaderboard table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #leaderboard th, #leaderboard td {
+            padding: 10px;
+            border: 1px solid #3498db; /* Light blue border */
+        }
+        #leaderboard th {
+            background-color: #3498db; /* Light blue header */
+            color: #000; /* Black text */
+        }
+        #leaderboard tr:nth-child(even) {
+            background-color: #333; /* Dark gray for even rows */
+        }
+        #leaderboard tr:hover {
+            background-color: #444; /* Lighter gray on hover */
+        }
+        .clickable-name {
+            cursor: pointer;
+            color: #3498db; /* Light blue for clickable names */
+            text-decoration: underline;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8cm; /* Width of the modal */
+            height: 10cm; /* Height of the modal */
+            background-color: #1e1e1e; /* Dark gray background */
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1); /* White shadow */
+            padding: 20px;
+            z-index: 1000; /* Ensure it appears above other content */
+        }
+        .modal-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            color: #fff;
+            font-size: 20px;
+        }
+        .modal-backdrop {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+            z-index: 999; /* Below the modal */
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Student Dashboard</h1>
+    <input type="file" id="fileInput" accept=".json">
+    
+    <!-- Leaderboard Section -->
+    <div id="leaderboard">
+        <h2>Leaderboard</h2>
+        <table id="leaderboardTable">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name</th>
+                    <th>Total Score</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be populated dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal for Traits Graph -->
+    <div id="traitsModal" class="modal">
+        <span class="close-modal">&times;</span>
+        <div class="modal-content">
+            <h2>Personality Traits</h2>
+            <div id="studentTraitsChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+    <div id="modalBackdrop" class="modal-backdrop"></div>
+
+    <!-- Charts Section -->
+    <div id="charts">
+        <div class="chart-container" id="radarChart"></div>
+        <div class="chart-container" id="boxPlot"></div>
+        <div class="chart-container" id="heatmap"></div>
+        <div class="chart-container" id="stackedBarChart"></div>
+        <div class="chart-container" id="scatterPlot"></div>
+        <div class="chart-container" id="lineChart"></div>
+        <div class="chart-container" id="groupedBarChart"></div>
+        <div class="chart-container" id="bubbleChart"></div>
+        <div class="chart-container" id="donutChart"></div>
+        <div class="chart-container" id="highestComparison"></div>
+        <div class="chart-container" id="lowestComparison"></div>
+    </div>
+
+    <script>
+        // File upload event listener
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    console.log("Uploaded Data:", data); // Debug: Check uploaded data
+                    generateDashboard(data);
+                    generateLeaderboard(data);
+                } catch (error) {
+                    console.error("Error parsing JSON file:", error); // Debug: Check for JSON parsing errors
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Function to generate the dashboard
+        function generateDashboard(data) {
+            console.log("Generating Dashboard with Data:", data); // Debug: Check data passed to charts
+
+            const names = data.map(d => d.Name);
+            const totalScores = data.map(d => d["Total Score"]);
+            const ranks = data.map(d => d.Rank);
+            const statuses = data.map(d => d.Status);
+            const traits = ['Openness', 'Conscientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism'];
+
+            // 1. Radar Chart (Spider Chart)
+            const radarData = data.map(d => ({
+                type: 'scatterpolar',
+                r: traits.map(trait => d[trait]),
+                theta: traits,
+                fill: 'toself',
+                name: d.Name
+            }));
+            Plotly.newPlot('radarChart', radarData, {
+                title: 'Personality Traits (Radar Chart)',
+                polar: { bgcolor: '#1e1e1e' },
+                font: { color: '#fff' }
+            });
+
+            // 2. Box Plot (Personality Traits Distribution)
+            const boxPlotData = traits.map(trait => ({
+                y: data.map(d => d[trait]),
+                name: trait,
+                type: 'box',
+                boxpoints: 'all',
+                marker: { color: '#e74c3c' } // Red markers
+            }));
+            Plotly.newPlot('boxPlot', boxPlotData, {
+                title: 'Personality Traits Distribution (Box Plot)',
+                yaxis: { title: 'Trait Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' }
+            });
+
+            // 3. Heatmap (Personality Traits Correlation)
+            const heatmapData = traits.map(trait => data.map(d => d[trait]));
+            Plotly.newPlot('heatmap', [{
+                z: heatmapData,
+                x: names,
+                y: traits,
+                type: 'heatmap',
+                colorscale: 'Viridis'
+            }], {
+                title: 'Personality Traits Correlation (Heatmap)',
+                xaxis: { title: 'Students', color: '#fff' },
+                yaxis: { title: 'Traits', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' }
+            });
+
+            // 4. Stacked Bar Chart (Status Breakdown)
+            const statusCounts = {};
+            statuses.forEach(s => statusCounts[s] = (statusCounts[s] || 0) + 1);
+            Plotly.newPlot('stackedBarChart', [{
+                x: Object.keys(statusCounts),
+                y: Object.values(statusCounts),
+                type: 'bar',
+                marker: { color: '#3498db' } // Light blue bars
+            }], {
+                title: 'Status Distribution (Stacked Bar Chart)',
+                xaxis: { title: 'Status', color: '#fff' },
+                yaxis: { title: 'Count', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' },
+                barmode: 'stack'
+            });
+
+            // 5. Scatter Plot (Total Score vs Openness)
+            Plotly.newPlot('scatterPlot', [{
+                x: data.map(d => d.Openness),
+                y: totalScores,
+                mode: 'markers',
+                marker: { size: 10, color: '#2ecc71' } // Green markers
+            }], {
+                title: 'Total Score vs Openness (Scatter Plot)',
+                xaxis: { title: 'Openness', color: '#fff' },
+                yaxis: { title: 'Total Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' }
+            });
+
+            // 6. Line Chart (Total Score vs Rank)
+            Plotly.newPlot('lineChart', [{
+                x: ranks,
+                y: totalScores,
+                mode: 'lines+markers',
+                line: { color: '#2ecc71' }, // Green line
+                marker: { size: 10, color: '#2ecc71' } // Green markers
+            }], {
+                title: 'Total Score vs Rank (Line Chart)',
+                xaxis: { title: 'Rank', autorange: 'reversed', color: '#fff' },
+                yaxis: { title: 'Total Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' }
+            });
+
+            // 7. Grouped Bar Chart (Top 5 vs Bottom 5 Students)
+            const top5 = data.slice(0, 5);
+            const bottom5 = data.slice(-5);
+            const groupedBarData = traits.map(trait => ({
+                x: ['Top 5', 'Bottom 5'],
+                y: [
+                    top5.reduce((sum, d) => sum + d[trait], 0) / top5.length,
+                    bottom5.reduce((sum, d) => sum + d[trait], 0) / bottom5.length
+                ],
+                name: trait,
+                type: 'bar'
+            }));
+            Plotly.newPlot('groupedBarChart', groupedBarData, {
+                title: 'Top 5 vs Bottom 5 Students (Grouped Bar Chart)',
+                xaxis: { title: 'Group', color: '#fff' },
+                yaxis: { title: 'Average Trait Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' },
+                barmode: 'group'
+            });
+
+            // 8. Bubble Chart (Total Score vs Rank vs Neuroticism)
+            Plotly.newPlot('bubbleChart', [{
+                x: ranks,
+                y: totalScores,
+                text: names,
+                mode: 'markers',
+                marker: {
+                    size: data.map(d => d.Neuroticism * 2), // Bubble size based on Neuroticism
+                    color: data.map(d => d.Neuroticism), // Bubble color based on Neuroticism
+                    colorscale: 'Viridis'
+                }
+            }], {
+                title: 'Total Score vs Rank vs Neuroticism (Bubble Chart)',
+                xaxis: { title: 'Rank', autorange: 'reversed', color: '#fff' },
+                yaxis: { title: 'Total Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' }
+            });
+
+            // 9. Donut Chart (Grade Distribution)
+            const gradeCounts = {};
+            data.forEach(d => gradeCounts[d.Grade] = (gradeCounts[d.Grade] || 0) + 1);
+            Plotly.newPlot('donutChart', [{
+                labels: Object.keys(gradeCounts),
+                values: Object.values(gradeCounts),
+                type: 'pie',
+                hole: 0.4,
+                marker: { colors: ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f'] } // Colorful segments
+            }], {
+                title: 'Grade Distribution (Donut Chart)',
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' }
+            });
+
+            // 10. Highest Comparison Chart
+            const highestStudent = data[0]; // Assuming data is sorted by Total Score
+            const highestComparisonData = traits.map(trait => ({
+                x: ['Highest', 'Average'],
+                y: [highestStudent[trait], data.reduce((sum, d) => sum + d[trait], 0) / data.length],
+                name: trait,
+                type: 'bar'
+            }));
+            Plotly.newPlot('highestComparison', highestComparisonData, {
+                title: 'Highest Student vs Average (Grouped Bar Chart)',
+                xaxis: { title: 'Comparison', color: '#fff' },
+                yaxis: { title: 'Trait Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' },
+                barmode: 'group'
+            });
+
+            // 11. Lowest Comparison Chart
+            const lowestStudent = data[data.length - 1]; // Assuming data is sorted by Total Score
+            const lowestComparisonData = traits.map(trait => ({
+                x: ['Lowest', 'Average'],
+                y: [lowestStudent[trait], data.reduce((sum, d) => sum + d[trait], 0) / data.length],
+                name: trait,
+                type: 'bar'
+            }));
+            Plotly.newPlot('lowestComparison', lowestComparisonData, {
+                title: 'Lowest Student vs Average (Grouped Bar Chart)',
+                xaxis: { title: 'Comparison', color: '#fff' },
+                yaxis: { title: 'Trait Score', color: '#fff' },
+                plot_bgcolor: '#1e1e1e',
+                paper_bgcolor: '#1e1e1e',
+                font: { color: '#fff' },
+                barmode: 'group'
+            });
+        }
+
+        // Function to generate the leaderboard
+        function generateLeaderboard(data) {
+            // Sort data by Total Score (descending order)
+            const sortedData = data.sort((a, b) => b["Total Score"] - a["Total Score"]);
+
+            // Get the leaderboard table body
+            const leaderboardTable = document.getElementById('leaderboardTable').getElementsByTagName('tbody')[0];
+            leaderboardTable.innerHTML = ''; // Clear existing rows
+
+            // Populate the leaderboard table
+            sortedData.forEach((student, index) => {
+                const row = leaderboardTable.insertRow();
+                row.insertCell().textContent = index + 1; // Rank
+                const nameCell = row.insertCell();
+                nameCell.textContent = student.Name; // Name
+                nameCell.classList.add('clickable-name'); // Add clickable class
+                nameCell.onclick = () => showTraitsGraph(student); // Add click event
+                row.insertCell().textContent = student["Total Score"]; // Total Score
+                row.insertCell().textContent = student.Status; // Status
+            });
+        }
+
+        // Function to show traits graph for a selected student
+        function showTraitsGraph(student) {
+            const traits = ['Openness', 'Conscientiousness', 'Extraversion', 'Agreeableness', 'Neuroticism'];
+            const radarData = [{
+                type: 'scatterpolar',
+                r: traits.map(trait => student[trait]),
+                theta: traits,
+                fill: 'toself',
+                name: student.Name
+            }];
+            Plotly.newPlot('studentTraitsChart', radarData, {
+                title: `Personality Traits for ${student.Name}`,
+                polar: { bgcolor: '#1e1e1e' },
+                font: { color: '#fff' }
+            });
+
+            // Show the modal
+            const modal = document.getElementById('traitsModal');
+            const backdrop = document.getElementById('modalBackdrop');
+            modal.style.display = 'block';
+            backdrop.style.display = 'block';
+        }
+
+        // Close the modal when the close button is clicked
+        document.querySelector('.close-modal').addEventListener('click', function() {
+            const modal = document.getElementById('traitsModal');
+            const backdrop = document.getElementById('modalBackdrop');
+            modal.style.display = 'none';
+            backdrop.style.display = 'none';
+        });
+
+        // Close the modal when clicking outside of it
+        document.getElementById('modalBackdrop').addEventListener('click', function() {
+            const modal = document.getElementById('traitsModal');
+            const backdrop = document.getElementById('modalBackdrop');
+            modal.style.display = 'none';
+            backdrop.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+[
+    {
+        "ID": 101,
+        "Name": "VAMSHI",
+        "Openness": 80,
+        "Conscientiousness": 85,
+        "Extraversion": 75,
+        "Agreeableness": 90,
+        "Neuroticism": 60,
+        "Total Score": 390,
+        "Rank": 1,
+        "Status": "Excellent",
+        "Grade": "A+"
+    },
+    {
+        "ID": 102,
+        "Name": "VIKAS",
+        "Openness": 70,
+        "Conscientiousness": 75,
+        "Extraversion": 65,
+        "Agreeableness": 85,
+        "Neuroticism": 55,
+        "Total Score": 350,
+        "Rank": 2,
+        "Status": "Good",
+        "Grade": "A"
+    },
+    {
+        "ID": 103,
+        "Name": "RAMESH",
+        "Openness": 60,
+        "Conscientiousness": 70,
+        "Extraversion": 60,
+        "Agreeableness": 75,
+        "Neuroticism": 50,
+        "Total Score": 315,
+        "Rank": 3,
+        "Status": "Good",
+        "Grade": "B"
+    },
+    {
+        "ID": 104,
+        "Name": "VISHAL",
+        "Openness": 50,
+        "Conscientiousness": 60,
+        "Extraversion": 55,
+        "Agreeableness": 70,
+        "Neuroticism": 45,
+        "Total Score": 280,
+        "Rank": 4,
+        "Status": "Needs Improvement",
+        "Grade": "C"
+    },
+    {
+        "ID": 105,
+        "Name": "SIDDU",
+        "Openness": 40,
+        "Creativity": 50,
+        "Leadership": 45,
+        "Agreeableness": 60,
+        "Teamwork": 40,
+        "Total Score": 235,
+        "Rank": 5,
+        "Status": "Needs Improvement",
+        "Grade": "D"
+    }
+]
